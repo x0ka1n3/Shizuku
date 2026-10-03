@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="support_email" translatable="false">thedjchidev@gmail.com</string>
+    <!-- This fork's repo: About, bug reports and the updater link here. Docs still point to thedjchi's wiki. -->
+    <string name="repo_url" translatable="false">https://github.com/thedjchi/Shizuku</string>
     <string name="translation_url" translatable="false">https://crowdin.com/project/shizuku</string>
     <string name="help_url" translatable="false">https://github.com/thedjchi/Shizuku/wiki</string>
     <string name="automation_apps_url" translatable="false">https://github.com/thedjchi/Shizuku/wiki#using-automation-apps-to-startstop-shizuku</string>

@@ -2,17 +2,11 @@ package moe.shizuku.manager.settings
 
 import android.app.Dialog
 import android.app.NotificationManager
-import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.DialogInterface
-import android.content.Intent
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.widget.Toast
 import androidx.fragment.app.DialogFragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import moe.shizuku.manager.BuildConfig
 import moe.shizuku.manager.R
 import moe.shizuku.manager.databinding.BugReportDialogBinding
 import moe.shizuku.manager.ktx.asLink
@@ -28,14 +22,16 @@ class BugReportDialog : DialogFragment() {
         val context = requireContext()
         binding = BugReportDialogBinding.inflate(layoutInflater)
 
+        val repoUrl = getString(R.string.repo_url)
+
         val updateLink = getString(R.string.bug_report_dialog_link_update)
-            .asLink("https://github.com/thedjchi/Shizuku/releases/latest")
+            .asLink("$repoUrl/releases/latest")
 
         val wikiLink = getString(R.string.bug_report_dialog_link_wiki)
-            .asLink("https://github.com/thedjchi/Shizuku/releases/wiki#troubleshooting")
+            .asLink(getString(R.string.help_url) + "#troubleshooting")
 
         val issuesLink = getString(R.string.bug_report_dialog_link_issues)
-            .asLink("https://github.com/thedjchi/Shizuku/releases/issues")
+            .asLink("$repoUrl/issues")
 
         binding.apply {
             updateText.applyTemplateArgs(updateLink)
@@ -48,28 +44,7 @@ class BugReportDialog : DialogFragment() {
             .setTitle(R.string.settings_report_bug)
             .setView(binding.root)
             .setPositiveButton("GitHub") { _, _ ->
-                CustomTabsHelper.launchUrlOrCopy(context, "https://github.com/thedjchi/Shizuku/issues/new")
-            }
-            .setNegativeButton(R.string.bug_report_dialog_button_email) { _, _ ->
-                val plainBody = """
-                    Please describe the bug. Include steps to reproduce if possible, as well as any relevant images/logs.
-
-                    Device: ${Build.MANUFACTURER} ${Build.MODEL}
-                    Android Version: ${Build.VERSION.RELEASE}
-                    Shizuku Version: ${BuildConfig.VERSION_NAME}
-                """.trimIndent()
-
-                val intent = Intent(Intent.ACTION_SENDTO, Uri.parse(
-                    "mailto:" + context.getString(R.string.support_email) + 
-                    "?subject=" + Uri.encode("[ISSUE TITLE]") +
-                    "&body=" + Uri.encode(plainBody)
-                ))
-                try {
-                    context.startActivity(intent)
-                    dismiss()
-                } catch (e: ActivityNotFoundException) {
-                    Toast.makeText(context, context.getString(R.string.toast_no_email_app), Toast.LENGTH_SHORT).show()
-                }
+                CustomTabsHelper.launchUrlOrCopy(context, "$repoUrl/issues/new")
             }
             .setNeutralButton(android.R.string.cancel) { dialog, _ ->
                 dialog.cancel()

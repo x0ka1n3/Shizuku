@@ -12,6 +12,7 @@ import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import androidx.activity.viewModels
+import androidx.core.view.isVisible
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -29,7 +30,6 @@ import moe.shizuku.manager.ktx.toHtml
 import moe.shizuku.manager.management.AppsViewModel
 import moe.shizuku.manager.settings.SettingsActivity
 import moe.shizuku.manager.utils.AppIconCache
-import moe.shizuku.manager.utils.CustomTabsHelper
 import moe.shizuku.manager.utils.EnvironmentUtils
 import moe.shizuku.manager.utils.SettingsHelper
 import moe.shizuku.manager.utils.ShizukuStateMachine
@@ -199,7 +199,7 @@ abstract class HomeActivity : AppBarActivity() {
                 binding.sourceCode.movementMethod = LinkMovementMethod.getInstance()
                 binding.sourceCode.text = getString(
                     R.string.about_view_source_code,
-                    "<b><a href=\"https://github.com/thedjchi/Shizuku\">GitHub</a></b>"
+                    "<b><a href=\"${getString(R.string.repo_url)}\">GitHub</a></b>"
                 ).toHtml()
                 binding.icon.setImageBitmap(
                     AppIconCache.getOrLoadBitmap(
@@ -211,14 +211,11 @@ abstract class HomeActivity : AppBarActivity() {
                 )
                 binding.versionName.text = packageManager.getPackageInfo(packageName, 0).versionName
 
+                binding.btnUpdate.isVisible = UpdateHelper.ENABLED
                 binding.btnUpdate.setOnClickListener {
                     lifecycleScope.launch {
                         UpdateHelper.checkAndInstallUpdates()
                     }
-                }
-
-                binding.btnDonate.setOnClickListener {
-                    CustomTabsHelper.launchUrlOrCopy(this, "https://www.buymeacoffee.com/thedjchi")
                 }
 
                 val dialog = MaterialAlertDialogBuilder(this)

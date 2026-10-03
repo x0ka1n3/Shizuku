@@ -53,6 +53,7 @@ import moe.shizuku.manager.utils.CustomTabsHelper
 import moe.shizuku.manager.utils.EnvironmentUtils
 import moe.shizuku.manager.utils.SettingsHelper
 import moe.shizuku.manager.utils.ShizukuStateMachine
+import moe.shizuku.manager.utils.UpdateHelper
 import rikka.core.util.ResourceUtils
 import rikka.html.text.HtmlCompat
 import rikka.material.app.LocaleDelegate
@@ -305,6 +306,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         }
 
         updateModePreference.value = ShizukuSettings.getUpdateMode()
+        updateModePreference.isVisible = UpdateHelper.ENABLED
 
         helpPreference.setOnPreferenceClickListener {
             CustomTabsHelper.launchUrlOrCopy(context, context.getString(R.string.help_url))

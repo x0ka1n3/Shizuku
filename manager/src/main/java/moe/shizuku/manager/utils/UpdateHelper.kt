@@ -80,7 +80,11 @@ object UpdateHelper {
 
     private lateinit var latestRelease: Release
 
+    // Off until this fork publishes its own releases; also hides the update UI.
+    const val ENABLED = false
+
     suspend fun checkAndInstallUpdates() {
+        if (!ENABLED) return
         if (isUpdateAvailable()) {
             update()
         } else {
@@ -93,7 +97,7 @@ object UpdateHelper {
         }
     }
 
-    fun isCheckForUpdatesEnabled(): Boolean = ShizukuSettings.getUpdateMode() != ShizukuSettings.UpdateMode.OFF
+    fun isCheckForUpdatesEnabled(): Boolean = ENABLED && ShizukuSettings.getUpdateMode() != ShizukuSettings.UpdateMode.OFF
 
     suspend fun isNewUpdateAvailable(): Boolean {
         val lastPromptedVersion =
@@ -122,6 +126,7 @@ object UpdateHelper {
     fun updateLastPromptedVersion() = ShizukuSettings.setLastPromptedVersion(latestRelease.version.toString())
 
     suspend fun update() {
+        if (!ENABLED) return
         if (!::latestRelease.isInitialized && !isUpdateAvailable()) return
 
         Toast
@@ -174,7 +179,8 @@ object UpdateHelper {
 
     private suspend fun fetchLatestRelease(): Release =
         withContext(Dispatchers.IO) {
-            val url = "https://api.github.com/repos/thedjchi/Shizuku/releases"
+            val url = appContext.getString(R.string.repo_url)
+                .replace("https://github.com/", "https://api.github.com/repos/") + "/releases"
             val request = Request.Builder().url(url).build()
             val response = client.newCall(request).execute()
             val body = response.body?.string() ?: throw Exception("Couldn't fetch releases")
