@@ -19,8 +19,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import kotlin.collections.ArraysKt;
@@ -29,6 +32,7 @@ import rikka.shizuku.server.util.Android17Compat;
 import rikka.shizuku.server.util.UsersCompat;
 import rikka.shizuku.server.util.InstalledPackagesCompat;
 import rikka.shizuku.server.ktx.HandlerKt;
+import rikka.shizuku.server.util.UserHandleCompat;
 
 public class ShizukuConfigManager extends ConfigManager {
 
@@ -111,12 +115,22 @@ public class ShizukuConfigManager extends ConfigManager {
             changed = true;
         }
 
+        // Read once, before anything is removed below.
+        Map<Integer, List<PackageInfo>> installed = new LinkedHashMap<>();
+        for (int userId : UsersCompat.getUserIdsNoThrow()) {
+            installed.put(userId, InstalledPackagesCompat.getInstalledPackagesNoThrow(PackageManager.GET_PERMISSIONS, userId));
+        }
+
         for (ShizukuConfig.PackageEntry entry : new ArrayList<>(config.packages)) {
             if (entry.packages == null) {
                 entry.packages = new ArrayList<>();
             }
 
-            List<String> packages = PackageManagerApis.getPackagesForUidNoThrow(entry.uid);
+            Set<String> packages = getPackagesForUid(entry.uid, installed);
+            if (packages == null) {
+                LOGGER.w("cannot read packages for uid %d; keeping its config", entry.uid);
+                continue;
+            }
             if (packages.isEmpty()) {
                 LOGGER.i("remove config for uid %d since it has gone", entry.uid);
                 config.packages.remove(entry);
@@ -149,8 +163,8 @@ public class ShizukuConfigManager extends ConfigManager {
             }
         }
 
-        for (int userId : UsersCompat.getUserIdsNoThrow()) {
-            for (PackageInfo pi : InstalledPackagesCompat.getInstalledPackagesNoThrow(PackageManager.GET_PERMISSIONS, userId)) {
+        for (List<PackageInfo> forUser : installed.values()) {
+            for (PackageInfo pi : forUser) {
                 if (pi == null
                         || pi.applicationInfo == null
                         || pi.requestedPermissions == null
@@ -178,6 +192,42 @@ public class ShizukuConfigManager extends ConfigManager {
         if (changed) {
             scheduleWriteLocked();
         }
+    }
+
+    /**
+     * Packages of the uid, or null if neither the package manager nor the installed list of the
+     * uid's user could be read (e.g. early in boot). The no-throw lookup used before returned an
+     * empty list on failure too, so an unanswered call removed the uid's config and its grants.
+     */
+    @Nullable
+    private static Set<String> getPackagesForUid(int uid, Map<Integer, List<PackageInfo>> installed) {
+        String[] lookup = null;
+        try {
+            lookup = PackageManagerApis.getPackagesForUid(uid);
+        } catch (Throwable tr) {
+            LOGGER.w(tr, "getPackagesForUid %d", uid);
+        }
+
+        // Every user has some apps installed, so an empty list means it couldn't be read.
+        List<PackageInfo> forUser = installed.get(UserHandleCompat.getUserId(uid));
+        boolean listRead = forUser != null && !forUser.isEmpty();
+
+        if (lookup == null && !listRead) {
+            return null;
+        }
+
+        Set<String> packages = new LinkedHashSet<>();
+        if (lookup != null) {
+            Collections.addAll(packages, lookup);
+        }
+        if (listRead) {
+            for (PackageInfo pi : forUser) {
+                if (pi != null && pi.applicationInfo != null && pi.applicationInfo.uid == uid) {
+                    packages.add(pi.packageName);
+                }
+            }
+        }
+        return packages;
     }
 
     private void scheduleWriteLocked() {
