@@ -21,14 +21,16 @@ Vuriko keeps the package name `moe.shizuku.privileged.api`, so apps that use Shi
 - **Android 17 QPR1:** fixed the false "USB debugging is not enabled" error. Since QPR1, `Settings.Global.ADB_ENABLED` always reads 0 for third-party apps.
 - Builds with AGP 8.13.2 and NDK 30 against the current API 37 SDK.
 - Shizuku-API is included as a git subtree (`api/`) instead of a submodule.
-- The in-app updater is disabled until this fork publishes its own releases.
+- The in-app updater checks this fork's releases and installs an update only if it is signed with the release certificate below (also in stealth mode, which re-signs the APK locally).
+- Fixed a crash when an update download failed.
+- Server: sees all users on Android 17 (Private Space, work profiles) and keeps app grants when packages can't be read early in boot.
 - The keystore password is never stored on disk (see [Building](#building)).
 
 ## ⬇️ Download
 
-There are no releases yet — [build it yourself](#building).
+Get the latest APK from [Releases](https://github.com/x0ka1n3/Shizuku/releases), or [build it yourself](#building).
 
-Release APKs will be signed with this certificate (SHA-256):
+Release APKs are signed with this certificate (SHA-256):
 
 ```
 76ccdd7450445654754197fe0c749eb53dc57f1046eeb3d0f156b4d0afbd8cfd
@@ -63,11 +65,11 @@ thedjchi's [wiki](https://github.com/thedjchi/Shizuku/wiki) still applies for se
 * No tracking, analytics or telemetry
 * No proprietary libraries, no Google Play Services
 * Open-source codebase
-* Internet access is only used for wireless debugging connections (the update check is disabled)
+* Internet access is only used for wireless debugging connections and to check this fork's GitHub releases (can be turned off in settings)
 
 ### Permissions
 
-* **INTERNET:** required for the wireless debugging start mode
+* **INTERNET:** required for the wireless debugging start mode, and to check for updates
 * **ACCESS_LOCAL_NETWORK, USE_LOOPBACK_INTERFACE, NEARBY_WIFI_DEVICES, CHANGE_WIFI_MULTICAST_STATE:** finding and connecting to the wireless debugging port (Android 17 requires the first two)
 * **ACCESS_NETWORK_STATE:** used to determine when Wi-Fi is available for background start via wireless debugging
 * **POST_NOTIFICATIONS:** required for pairing notification and other alerts
@@ -75,7 +77,7 @@ thedjchi's [wiki](https://github.com/thedjchi/Shizuku/wiki) still applies for se
 * **FOREGROUND_SERVICE, FOREGROUND_SERVICE_SPECIAL_USE, WAKE_LOCK:** keep the watchdog and background start alive
 * **REQUEST_IGNORE_BATTERY_OPTIMIZATIONS:** prevents start on boot and watchdog services from being killed
 * **WRITE_SECURE_SETTINGS:** used to toggle USB and wireless debugging in the background when starting/stopping Shizuku
-* **REQUEST_DELETE_PACKAGES, REQUEST_INSTALL_PACKAGES:** used to uninstall/install the Shizuku stub in stealth mode
+* **REQUEST_DELETE_PACKAGES, REQUEST_INSTALL_PACKAGES:** used to install app updates and to uninstall/install the Shizuku stub in stealth mode
 
 ## 📱 Developer Guide
 

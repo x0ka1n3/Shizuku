@@ -2,6 +2,7 @@ package moe.shizuku.manager.utils
 
 import android.content.Context
 import android.widget.Toast
+import com.android.apksig.ApkVerifier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -80,8 +81,13 @@ object UpdateHelper {
 
     private lateinit var latestRelease: Release
 
-    // Off until this fork publishes its own releases; also hides the update UI.
-    const val ENABLED = false
+    // Turns update checks and the update UI on or off.
+    const val ENABLED = true
+
+    // SHA-256 of the release signing certificate (also in README). Checked before installing:
+    // stealth mode re-signs the downloaded APK with a local key, so there Android's own
+    // signature check on update would not catch a tampered release.
+    private const val RELEASE_CERT_SHA256 = "76ccdd7450445654754197fe0c749eb53dc57f1046eeb3d0f156b4d0afbd8cfd"
 
     suspend fun checkAndInstallUpdates() {
         if (!ENABLED) return
@@ -137,7 +143,9 @@ object UpdateHelper {
             ).show()
 
         val apk =
-            latestRelease.download()?.run {
+            runCatching { latestRelease.download() }
+                .onFailure { android.util.Log.w("UpdateHelper", "Download failed", it) }
+                .getOrNull()?.run {
                 val pm = appContext.packageManager
                 val apkPackageName = pm.getPackageArchiveInfo(
                     this.path, 0
@@ -227,6 +235,9 @@ object UpdateHelper {
             if (downloadedDigest != digest)
                 throw SecurityException("Digest of downloaded file does not match the one reported by GitHub")
 
+            if (!apkFile.isSignedByRelease())
+                throw SecurityException("Downloaded APK is not signed with the release certificate")
+
             apkFile
         }
 
@@ -234,6 +245,15 @@ object UpdateHelper {
         val bytes = readBytes()
         val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
         return digest.joinToString("") { "%02x".format(it) }
+    }
+
+    private fun File.isSignedByRelease(): Boolean {
+        val result = ApkVerifier.Builder(this).build().verify()
+        val certs = result.signerCertificates
+        return result.isVerified && certs.isNotEmpty() && certs.all {
+            MessageDigest.getInstance("SHA-256").digest(it.encoded)
+                .joinToString("") { b -> "%02x".format(b) } == RELEASE_CERT_SHA256
+        }
     }
 
 }
