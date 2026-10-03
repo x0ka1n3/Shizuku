@@ -1,17 +1,25 @@
+// Keystore path and alias come from signing.properties. The password is taken from the
+// SHIZUKU_KEYSTORE_PASSWORD environment variable (set by build-release.ps1), so it never has
+// to be stored on disk. Without a password, release builds are left unsigned and debug builds
+// use the standard debug key.
 def ksFile = rootProject.file("signing.properties")
 def props = new Properties()
 if (ksFile.canRead()) {
-    props.load(new FileInputStream(ksFile))
+    ksFile.withInputStream { props.load(it) }
+}
 
-    if (props != null) {
-        android.signingConfigs.sign.storeFile file(props["KEYSTORE_FILE"])
-        android.signingConfigs.sign.storePassword props["KEYSTORE_PASSWORD"]
-        android.signingConfigs.sign.keyAlias props["KEYSTORE_ALIAS"]
-        android.signingConfigs.sign.keyPassword props["KEYSTORE_ALIAS_PASSWORD"]
-    }
+def storePassword = props["KEYSTORE_PASSWORD"] ?: System.getenv("SHIZUKU_KEYSTORE_PASSWORD")
+def keyPassword = props["KEYSTORE_ALIAS_PASSWORD"] ?: storePassword
+
+if (props["KEYSTORE_FILE"] && storePassword) {
+    android.signingConfigs.sign.storeFile file(props["KEYSTORE_FILE"])
+    android.signingConfigs.sign.storePassword storePassword
+    android.signingConfigs.sign.keyAlias props["KEYSTORE_ALIAS"]
+    android.signingConfigs.sign.keyPassword keyPassword
 } else {
     android.signingConfigs.sign.storeFile = android.signingConfigs.debug.storeFile
     android.signingConfigs.sign.storePassword = android.signingConfigs.debug.storePassword
     android.signingConfigs.sign.keyAlias = android.signingConfigs.debug.keyAlias
     android.signingConfigs.sign.keyPassword = android.signingConfigs.debug.keyPassword
+    android.buildTypes.release.signingConfig = null
 }
