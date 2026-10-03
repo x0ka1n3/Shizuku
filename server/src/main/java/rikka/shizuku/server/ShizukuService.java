@@ -51,6 +51,7 @@ import rikka.hidden.compat.ActivityManagerApis;
 import rikka.hidden.compat.DeviceIdleControllerApis;
 import rikka.hidden.compat.PackageManagerApis;
 import rikka.shizuku.server.util.Android17Compat;
+import rikka.shizuku.server.util.UsersCompat;
 import rikka.hidden.compat.UserManagerApis;
 import rikka.parcelablelist.ParcelableListSlice;
 import rikka.rish.RishConfig;
@@ -454,7 +455,7 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
         List<PackageInfo> list = new ArrayList<>();
         List<Integer> users = new ArrayList<>();
         if (userId == -1) {
-            users.addAll(UserManagerApis.getUserIdsNoThrow());
+            users.addAll(UsersCompat.getUserIdsNoThrow());
         } else {
             users.add(userId);
         }
@@ -502,7 +503,7 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
     }
 
     void sendBinderToClient() {
-        for (int userId : UserManagerApis.getUserIdsNoThrow()) {
+        for (int userId : UsersCompat.getUserIdsNoThrow()) {
             sendBinderToClient(this, userId);
         }
     }
@@ -534,14 +535,17 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
     }
 
     private static void sendBinderToManager(Binder binder) {
-        for (int userId : UserManagerApis.getUserIdsNoThrow()) {
+        for (int userId : UsersCompat.getUserIdsNoThrow()) {
             sendBinderToManager(binder, userId);
         }
     }
 
     static void sendBinderToManager(Binder binder, int userId) {
         boolean success = sendBinderToUserApp(binder, MANAGER_APPLICATION_ID, userId);
-        if (!success) {
+        if (!success && isManagerMissing(userId)) {
+            // e.g. a Private Space or work profile without Shizuku: nothing to force stop and retry
+            LOGGER.i("%s is not installed in user %d, skip retry", MANAGER_APPLICATION_ID, userId);
+        } else if (!success) {
             // For unknown reason, sometimes this could happens
             // Kill Shizuku app and try again could work
             try {
@@ -560,6 +564,22 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
                 LOGGER.e(tr, "retry failed");
             }
         }
+    }
+
+    // True only if the user's package list was read and has no manager. getApplicationInfo can't
+    // tell "not installed" from "call failed" (both null), and wrongly skipping the retry could
+    // leave the manager without a binder, so a failed read keeps the retry.
+    private static boolean isManagerMissing(int userId) {
+        List<PackageInfo> packages = InstalledPackagesCompat.getInstalledPackagesNoThrow(0, userId);
+        if (packages.isEmpty()) {
+            return false;
+        }
+        for (PackageInfo pi : packages) {
+            if (pi != null && MANAGER_APPLICATION_ID.equals(pi.packageName)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     static boolean sendBinderToUserApp(Binder binder, String packageName, int userId) {

@@ -26,8 +26,8 @@ import java.util.Set;
 import kotlin.collections.ArraysKt;
 import rikka.hidden.compat.PackageManagerApis;
 import rikka.shizuku.server.util.Android17Compat;
+import rikka.shizuku.server.util.UsersCompat;
 import rikka.shizuku.server.util.InstalledPackagesCompat;
-import rikka.hidden.compat.UserManagerApis;
 import rikka.shizuku.server.ktx.HandlerKt;
 
 public class ShizukuConfigManager extends ConfigManager {
@@ -149,7 +149,7 @@ public class ShizukuConfigManager extends ConfigManager {
             }
         }
 
-        for (int userId : UserManagerApis.getUserIdsNoThrow()) {
+        for (int userId : UsersCompat.getUserIdsNoThrow()) {
             for (PackageInfo pi : InstalledPackagesCompat.getInstalledPackagesNoThrow(PackageManager.GET_PERMISSIONS, userId)) {
                 if (pi == null
                         || pi.applicationInfo == null
